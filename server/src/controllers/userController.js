@@ -1,10 +1,13 @@
 import User from '../models/User.js';
 
-const WRITABLE_FIELDS = ['email', 'username', 'password', 'user_type', 'address'];
+// 회원가입은 누구나 호출하므로 user_type을 받지 않음 → 항상 스키마 기본값(customer)으로 가입
+const SIGNUP_FIELDS = ['email', 'username', 'password', 'address'];
+// 관리자가 회원을 수정할 때만 user_type 변경 허용
+const WRITABLE_FIELDS = [...SIGNUP_FIELDS, 'user_type'];
 
-function pickWritable(body = {}) {
+function pickFields(body = {}, fields) {
   return Object.fromEntries(
-    Object.entries(body).filter(([key]) => WRITABLE_FIELDS.includes(key))
+    Object.entries(body).filter(([key]) => fields.includes(key))
   );
 }
 
@@ -29,7 +32,7 @@ export async function getUser(req, res, next) {
 
 export async function createUser(req, res, next) {
   try {
-    const user = await User.create(pickWritable(req.body));
+    const user = await User.create(pickFields(req.body, SIGNUP_FIELDS));
     res.status(201).json(user);
   } catch (err) {
     next(err);
@@ -41,7 +44,7 @@ export async function updateUser(req, res, next) {
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
-    user.set(pickWritable(req.body));
+    user.set(pickFields(req.body, WRITABLE_FIELDS));
     await user.save();
     res.json(user);
   } catch (err) {
